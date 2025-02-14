@@ -568,4 +568,7 @@ kubeadm upgrade node config --kubelet-version v1.12.0
 systemctl restart kubelet
 # pour voir la version : 
 kubectl get nodes
-# Dans le suite nous 
+# Dans le suite nous devons rendre le node schedulable
+kubectl uncordon node-1
+
+# pour chaque node, effetcuer les meme oprations

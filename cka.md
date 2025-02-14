@@ -53,10 +53,8 @@ kubectl create deployment httpd-frontend --image=httpd:2.4-alpine --replicas=3 -
 
 
 # services
- kubectl run httpd --image=httpd:alpine 
+kubectl run httpd --image=httpd:alpine 
 pod/httpd created
-
-# 
 
 # Delarative methode : 
 kubectl config get-contexts
@@ -449,3 +447,125 @@ kubectl -n webhook-demo create secret tls webhook-server-tls \
     --cert "/root/keys/webhook-server-tls.crt" \
     --key "/root/keys/webhook-server-tls.key"
 ```	
+
+# Rolling update nd rollbacks
+
+Rollout command 
+```bash
+kubectl create -f deployment-definition.yml # Create 
+kubectl get deployments # get 
+kubectl apply -f deployment-definition.yml # Update deployment
+kubectl set image deployment/myapp-deployment nginx=nginx:1.9.1 # update deployment
+kubectl rollout status deployment/myapp-deployment # status
+kubectl rollout history deployment/myapp-deployment # status
+kubectl rollout undo deployment/myapp-deployment # rollback
+kubectl get replicasets 
+```
+# CofigMap
+- Les ConfigMaps sont un type de ressource dans Kubernetes qui vous permet de stocker des 
+données de configuration sous forme de paires clé-valeur
+- Elles sont utilisées pour découpler les configurations des applications des images de 
+conteneurs, ce qui permet de gérer et de déployer des applications de manière plus flexible.
+
+## Utilisation des ConfigMaps
+- Les ConfigMaps sont utilisés pour stocker des données de configuration non sensibles, 
+comme les fichiers de configuration, les variables d'environnement, les commandes de démarrage, etc.
+
+## Création d'un ConfigMap :
+- Nous pouvons créer un ConfigMap à partir d'un fichier, d'un répertoire ou de littéraux directement 
+dans un fichier YAML.
+Exemple: 
+```bash
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: example-config
+data:
+  config.json: |
+    {
+      "key": "value"
+    }
+  ENV_VAR: "value"
+```
+
+kubect create cm my-config-map --from-literal=key=value --fron-literal=kay=value
+
+# Chiffrement des secrets (ou tout autre objets k8s)
+Si vous exécutez kube-apiserver avec l'argument --encryption-provider-config de ligne de commande
+
+1- create the secret ///////////////////////////////
+2- installe le client etcd si nécessaire: sudo apt install etcd-client 
+à l'aide de ll'outil etcdctl, lire ce secret dans etcd
+
+ETCDCTL_API=3 etcdctl get /registry/secrets/default/secret1 [...] | hexdump -C
+ou 
+ETCDCTL_API=3 etcdctl \
+   --cacert=/etc/kubernetes/pki/etcd/ca.crt   \
+   --cert=/etc/kubernetes/pki/etcd/server.crt \
+   --key=/etc/kubernetes/pki/etcd/server.key  \
+   get /registry/secrets/default/secret1 | hexdump -C
+
+
+3- create the encryption configuration yaml file with the right provider 
+    Exemple
+```yaml
+---
+apiVersion: apiserver.config.k8s.io/v1
+kind: EncryptionConfiguration
+resources:
+  - resources:
+      - secrets
+      - configmaps
+      - pandas.awesome.bears.example
+    providers:
+      - aescbc:
+          keys:
+            - name: key1
+              # See the following text for more details about the secret value
+              secret: <BASE 64 ENCODED SECRET>
+      - identity: {} # this fallback allows reading unencrypted secrets;
+                     # for example, during initial migration
+```
+
+kubectl -n elastic-stack logs kibana
+
+
+kubectl drain node01 --ignore-daemonsets
+k uncordon nodeO1
+k cordon node
+
+# Upgrade proce
+
+to upgrade the cluster 
+```bash	
+kubeadm upgrade # plan  pour voir le plan des mise à jour  
+apt-get upgrade -y kubeadm=1.12.0-00 # pour mettre à jour le kubeadm, ce ci doit etre fait avant la mise à jour du cluster
+kubeadme upgrade apply # ceci met à jour le cluster  (la mise à jour du control plan), cela met àjour le kube-apiserver
+```	
+The next step is to uprade the kubelet
+```bash
+kubectl get nodes # nous montre la verrsion des noeuds (des kubelet)
+# En fonction de notre installation, nous pouvons avoir le kubelet dans notre master node 
+# car on peut avoir le kubeadm déployé comme kubelet sur le master node pour 
+# exécuter les composants du controlplan comme pods dans le master node
+
+# si on a le kubelet dans le master node, pour le mettre à jour, exécuter :
+apt-get upgarde -y kubelet=1.12.0-00 
+# une fois mise à jour restart le service kubelet
+systemctl restart kubelet
+#Pour verifier si cela à bien été mit à jour
+kubectl gt nodes
+
+# Dans la suite nous devons upagrade les kubelet dans les workers nodes
+# Dans cette partie, nous devons avoir une stratégie de mise à jour si nous avons des applications 
+# qui tournes dans ces nodes 
+# Par exemple mettre à jour un node à la fois
+# mise à jour du node-1 par exemple :
+kubectl drain node-1 # pour déplacer les pods vers d'autres nodes, et le rend unschedulable
+apt-get upgrade -y kubeadm=1.12.0-00 # met à jour le kubeadm du node-1
+apt-get upgrade -y kubelet=1.12.0-00 # met à jour le kubelet du node-1
+kubeadm upgrade node config --kubelet-version v1.12.0 
+systemctl restart kubelet
+# pour voir la version : 
+kubectl get nodes
+# Dans le suite nous 

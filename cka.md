@@ -538,9 +538,12 @@ k cordon node
 
 to upgrade the cluster 
 ```bash	
-kubeadm upgrade # plan  pour voir le plan des mise à jour  
+kubeadm upgrade plan # pour voir le plan des mise à jour  
 apt-get upgrade -y kubeadm=1.12.0-00 # pour mettre à jour le kubeadm, ce ci doit etre fait avant la mise à jour du cluster
 kubeadme upgrade apply # ceci met à jour le cluster  (la mise à jour du control plan), cela met àjour le kube-apiserver
+# ou excéuter la commande 
+kubeadme upgrade apply 1.12.0
+
 ```	
 The next step is to uprade the kubelet
 ```bash
